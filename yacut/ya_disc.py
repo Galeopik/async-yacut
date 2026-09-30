@@ -41,7 +41,7 @@ async def upload_file_and_get_url(session, file):
         data = await response.json()
         url = data['href']
     async with session.put(
-        data=file.stream,
+        data=file.read(),
         url=url,
     ) as response:
         location = urllib.parse.unquote(response.headers['Location'])
