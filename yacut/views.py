@@ -1,85 +1,65 @@
-import string
-from random import choices
+from flask import abort, flash, redirect, render_template
 
-from flask import abort, flash, redirect, render_template, url_for
-
-from . import app, db
+from . import app
+from .constants import ERROR_404
 from .forms import FileForm, URLForm
 from .models import URLMap
 from .ya_disc import async_upload_files_to_ya_disc
 
 
-def get_unique_short_id():
-    while True:
-        short_code = ''.join(choices(
-            string.ascii_letters + string.digits, k=6
-        ))
-        if not URLMap.query.filter_by(short=short_code).first():
-            break
-    return short_code
+@app.route('/<short>', endpoint='redirect_to_original')
+def redirect_to_url(short):
+    url_map = URLMap.get_url_map_by_short(short)
+    if url_map is None:
+        abort(ERROR_404)
+    return redirect(url_map.original)
 
 
-@app.route('/<short_code>')
-def redirect_to_original(short_code):
-    url = URLMap.query.filter_by(short=short_code).first()
-    if url is None:
-        abort(404)
-    return redirect(url.original)
+def create_short_link(original, short=None):
+    link = URLMap.create(original=original, short=short)
+    if link is None:
+        raise RuntimeError('Не удалось создать короткую ссылку')
+    return link.get_short_link()
 
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     form = URLForm()
-    if form.validate_on_submit():
-        if not form.custom_id.data:
-            short_code = get_unique_short_id()
-        else:
-            short_code = form.custom_id.data
-        if (
-            URLMap.query.filter_by(short=form.custom_id.data).first()
-            or short_code == 'files'
-        ):
-            flash('Предложенный вариант короткой ссылки уже существует.')
-            return render_template('index.html', form=form)
-        url = URLMap(
-            original=form.original_link.data,
-            short=short_code
-        )
-        short_link = url_for(
-            'redirect_to_original',
-            short_code=short_code,
-            _external=True
-        )
-        db.session.add(url)
-        db.session.commit()
-        return render_template('index.html', form=form, short_link=short_link)
-    return render_template('index.html', form=form)
+    if not form.validate_on_submit():
+        flash('Указано недопустимое имя для короткой ссылки')
+        return render_template('index.html', form=form)
+
+    url_map = URLMap.create(
+        original=form.original_link.data,
+        short=form.custom_id.data
+    )
+    if url_map is None:
+        flash('Предложенный вариант короткой ссылки уже существует.')
+        return render_template('index.html', form=form)
+    short_link = url_map.get_short_link()
+    return render_template('index.html', form=form, short_link=short_link)
 
 
 @app.route('/files', methods=['GET', 'POST'])
 async def files_view():
     form = FileForm()
-    if form.validate_on_submit():
-        files = form.files.data
-        files_and_links = []
-        urls = await async_upload_files_to_ya_disc(form.files.data)
-        for file, url in zip(files, urls):
-            short_code = get_unique_short_id()
-            link = URLMap(
-                original=url,
-                short=short_code
-            )
-            db.session.add(link)
-            db.session.commit()
-            short_link = url_for(
-                'redirect_to_original',
-                short_code=short_code,
-                _external=True
-            )
-            files_and_links.append({
+    if not form.validate_on_submit():
+        return render_template('files.html', form=form)
+    files = form.files.data
+    try:
+        urls = await async_upload_files_to_ya_disc(files)
+    except Exception:
+        flash('Не удалось загрузить файлы')
+        return render_template('files.html', form=form)
+
+    try:
+        files_and_links = [
+            {
                 'filename': file.filename,
-                'short_link': short_link
-            })
-        return render_template('files.html', form=form, short_link=short_link,
-                               files_and_links=files_and_links)
-    return render_template('files.html', form=form)
+                'short_link': create_short_link(url)
+            } for file, url in zip(files, urls)]
+    except Exception:
+        flash('Не удалось создать короткие ссылки.')
+        return render_template('files.html', form=form)
+    return render_template('files.html', form=form,
+                           files_and_links=files_and_links)

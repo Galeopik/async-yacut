@@ -3,29 +3,23 @@ import urllib
 
 import aiohttp
 
-from . import app
+from settings import Config
 
 AUTH_HEADERS = {
-    'Authorization': f'OAuth {app.config["DISK_TOKEN"]}'
+    'Authorization': f'OAuth {Config.DISK_TOKEN}'
 }
-API_HOST = 'https://cloud-api.yandex.net/'
-API_VERSION = 'v1'
-REQUEST_UPLOAD_URL = f'{API_HOST}{API_VERSION}/disk/resources/upload'
-DOWNLOAD_LINK_URL = f'{API_HOST}{API_VERSION}/disk/resources/download'
+REQUEST_UPLOAD_URL = f'{Config.YANDEX_DISK_API_URL}/disk/resources/upload'
+DOWNLOAD_LINK_URL = f'{Config.YANDEX_DISK_API_URL}/disk/resources/download'
 
 
 async def async_upload_files_to_ya_disc(files):
-    if files is not None:
-        tasks = []
-        async with aiohttp.ClientSession() as session:
-            for file in files:
-                tasks.append(
-                    asyncio.ensure_future(
-                        upload_file_and_get_url(session, file)
-                    )
-                )
-            urls = await asyncio.gather(*tasks)
-    return urls
+    async with aiohttp.ClientSession() as session:
+        return await asyncio.gather(
+            *[
+                asyncio.ensure_future(upload_file_and_get_url(session, file))
+                for file in files
+            ]
+        )
 
 
 async def upload_file_and_get_url(session, file):

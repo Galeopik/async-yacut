@@ -16,13 +16,11 @@
               <div>
                 <div>
                   {{ form.original_link(class="form-control form-control-lg py-2 mb-3", placeholder=form.original_link.label.text) }}
-                  {% if form.original_link.errors %}
-                    <p class="text-danger">
-                      {% for error in form.original_link.errors %}
-                        {{ error }}
-                      {% endfor %}
-                    </p>
-                  {% endif %}
+                  <p class="text-danger">
+                    {% for error in form.original_link.errors %}
+                      {{ error }}
+                    {% endfor %}
+                  </p>
                 </div>
                 <div>
                   {{ form.custom_id(class="form-control form-control-lg py-2 mb-3", placeholder=form.custom_id.label.text) }}
@@ -40,13 +38,7 @@
           <div class="col-sm">
           </div>
           <div class="col-sm">
-              {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                  {% for message in messages %}
-                    <h5 class="text-center">{{ message }}</h5>
-                  {% endfor %}
-                {% endif %}
-              {% endwith %}
+              
             {% if short_link %}
               <h5 class="text-center">
                 Ваша новая ссылка готова:

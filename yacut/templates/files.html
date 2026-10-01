@@ -17,13 +17,11 @@
             <div>
               <div>
                 {{ form.files(class="form-control form-control-lg py-2 mb-3") }}
-                {% if form.files.errors %}
-                  <p class="text-danger">
-                    {% for error in form.files.errors %}
-                      {{ error }}
-                    {% endfor %}
-                  </p>
-                {% endif %}
+                <p class="text-danger">
+                  {% for error in form.files.errors %}
+                    {{ error }}
+                  {% endfor %}
+                </p>
               </div>
               {{ form.submit(class="btn btn-primary") }}
             </div>
@@ -34,20 +32,18 @@
       </div>
     </div>
     <div class="container mt-4">
-      {% if files_and_links %}
-        {% for item in files_and_links %}
-          <div class="row border-bottom py-2">
-            <div class="col-6">
-              {{ item.filename }}
-            </div>
-            <div class="col-6">
-              <a href="{{ item.short_link }}" target="_blank">
-                {{ item.short_link }}
-              </a>
-            </div>
+      {% for item in files_and_links %}
+        <div class="row border-bottom py-2">
+          <div class="col-6">
+            {{ item.filename }}
           </div>
-        {% endfor %}
-      {% endif %}
+          <div class="col-6">
+            <a href="{{ item.short_link }}" target="_blank">
+              {{ item.short_link }}
+            </a>
+          </div>
+        </div>
+      {% endfor %}
     </div>
   </section>
 </main>
