@@ -19,21 +19,22 @@ class URLMap(db.Model):
                           comment='Время создания')
 
     @staticmethod
-    def get_by_short(short):
+    def is_short_reserved(short):
+        return URLMap.get(short=short) or short == RESERVED_SHORT
+
+    @staticmethod
+    def get(short):
         return URLMap.query.filter_by(short=short).first()
 
     @staticmethod
     def get_unique_short():
         for _ in range(LIMIT_REPEAT_CREATE_SHORT):
             short = ''.join(choices(SHORT_CHARS, k=SHORT_LENGTH))
-            if (
-                short != RESERVED_SHORT
-                and not URLMap.get_by_short(short)
-            ):
+            if not URLMap.is_short_reserved(short):
                 return short
         raise RuntimeError(
-            f'Не удалось сгенерировать уникальный короткий идентификатор за'
-            f'{LIMIT_REPEAT_CREATE_SHORT} попыток.'
+            f'Не удалось сгенерировать уникальный короткий идентификатор'
+            f'Потрачено попыток: {LIMIT_REPEAT_CREATE_SHORT}.'
         )
 
     @staticmethod
@@ -50,7 +51,7 @@ class URLMap(db.Model):
                 f'Длина должна быть не более {MAX_LENGTH_ORIGINAL_LINK}'
             )
 
-        if not short or short == '':
+        if not short:
             short = URLMap.get_unique_short()
 
         else:
@@ -61,10 +62,7 @@ class URLMap(db.Model):
                 raise ValueError(
                     'Указано недопустимое имя для короткой ссылки'
                 )
-            if (
-                URLMap.get_by_short(short=short)
-                or short == RESERVED_SHORT
-            ):
+            if URLMap.is_short_reserved(short):
                 raise ValueError(
                     'Предложенный вариант короткой ссылки уже существует.'
                 )

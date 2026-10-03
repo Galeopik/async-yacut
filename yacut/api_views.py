@@ -8,7 +8,7 @@ from .models import URLMap
 
 @app.route('/api/id/<string:short>/', methods=['GET'])
 def get_original_link(short):
-    url_map = URLMap.get_by_short(short)
+    url_map = URLMap.get(short)
     if not url_map:
         raise InvalidAPIUsageError(
             'Указанный id не найден',
@@ -32,5 +32,5 @@ def create_short_link_api():
                 short=data.get('custom_id')
             ).get_short_link()
         }), STATUS_CREATED
-    except ValueError as error:
+    except Exception as error:
         raise InvalidAPIUsageError(str(error))

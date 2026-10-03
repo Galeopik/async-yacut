@@ -10,7 +10,7 @@ from .ya_disc import async_upload_files_to_ya_disc
 
 @app.route('/<short>', endpoint=REDIRECT_ENDPOINT)
 def redirect_to_url(short):
-    url_map = URLMap.get_by_short(short)
+    url_map = URLMap.get(short)
     if url_map is None:
         abort(ERROR_404)
     return redirect(url_map.original)
@@ -20,21 +20,21 @@ def redirect_to_url(short):
 def index():
     form = URLForm()
     if not form.validate_on_submit():
-        if form.custom_id.errors:
-            flash(form.custom_id.errors[0])
         return render_template('index.html', form=form)
 
     try:
-        short_link = URLMap.create(
-            original=form.original_link.data,
-            short=form.custom_id.data,
-            validate_short=False,
-            validate_original=False
-        ).get_short_link()
-    except ValueError as error:
+        return render_template(
+            'index.html',
+            form=form,
+            short_link=URLMap.create(
+                original=form.original_link.data,
+                short=form.custom_id.data,
+                validate_short=False,
+                validate_original=False
+            ).get_short_link())
+    except Exception as error:
         flash(str(error))
         return render_template('index.html', form=form)
-    return render_template('index.html', form=form, short_link=short_link)
 
 
 @app.route('/files', methods=['GET', 'POST'])
@@ -60,5 +60,5 @@ async def files_view():
                         commit=index == len(urls) - 1
                     ).get_short_link()
                 } for index, (file, url) in enumerate(zip(files, urls))])
-    except ValueError as error:
+    except Exception as error:
         raise InvalidAPIUsageError(str(error))
