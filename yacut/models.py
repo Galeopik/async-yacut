@@ -5,9 +5,8 @@ from flask import url_for
 
 from . import db
 from .constants import (LIMIT_REPEAT_CREATE_SHORT, MAX_LENGTH_ORIGINAL_LINK,
-                        MAX_LENGTH_SHORT, REDIRECT_ENDPOINT, RESERVED_NAME,
+                        MAX_LENGTH_SHORT, REDIRECT_ENDPOINT, RESERVED_SHORT,
                         SHORT_CHARS, SHORT_LENGTH, SHORT_PATTERN)
-from .error_handler import InvalidAPIUsageError
 
 
 class URLMap(db.Model):
@@ -20,7 +19,7 @@ class URLMap(db.Model):
                           comment='Время создания')
 
     @staticmethod
-    def get_url_map_by_short(short):
+    def get_by_short(short):
         return URLMap.query.filter_by(short=short).first()
 
     @staticmethod
@@ -28,44 +27,55 @@ class URLMap(db.Model):
         for _ in range(LIMIT_REPEAT_CREATE_SHORT):
             short = ''.join(choices(SHORT_CHARS, k=SHORT_LENGTH))
             if (
-                short != RESERVED_NAME
-                and not URLMap.get_url_map_by_short(short)
+                short != RESERVED_SHORT
+                and not URLMap.get_by_short(short)
             ):
                 return short
         raise RuntimeError(
-            'Не удалось сгенерировать уникальный короткий идентификатор'
+            f'Не удалось сгенерировать уникальный короткий идентификатор за'
+            f'{LIMIT_REPEAT_CREATE_SHORT} попыток.'
         )
 
     @staticmethod
-    def create(original, short, validate_short=True, validate_original=True):
+    def create(
+        original,
+        short=None,
+        validate_short=True,
+        validate_original=True,
+        commit=True
+    ):
         if validate_original and len(original) > MAX_LENGTH_ORIGINAL_LINK:
-            raise InvalidAPIUsageError(
-                'Исходная ссылка слишком длинная'
+            raise ValueError(
+                f'Исходная ссылка слишком длинная'
+                f'Длина должна быть не более {MAX_LENGTH_ORIGINAL_LINK}'
             )
 
-        if not short:
+        if not short or short == '':
             short = URLMap.get_unique_short()
 
-        elif validate_short and (
-            not SHORT_PATTERN.fullmatch(short)
-            or len(short) > MAX_LENGTH_SHORT
-        ):
-            raise InvalidAPIUsageError(
-                'Указано недопустимое имя для короткой ссылки'
-            )
-        if (
-            URLMap.get_url_map_by_short(short=short)
-            or short == RESERVED_NAME
-        ):
-            raise InvalidAPIUsageError(
-                'Предложенный вариант короткой ссылки уже существует.'
-            )
+        else:
+            if validate_short and (
+                not SHORT_PATTERN.fullmatch(short)
+                or len(short) > MAX_LENGTH_SHORT
+            ):
+                raise ValueError(
+                    'Указано недопустимое имя для короткой ссылки'
+                )
+            if (
+                URLMap.get_by_short(short=short)
+                or short == RESERVED_SHORT
+            ):
+                raise ValueError(
+                    'Предложенный вариант короткой ссылки уже существует.'
+                )
 
         url_map = URLMap(
             original=original,
             short=short
         )
         db.session.add(url_map)
+        if commit:
+            db.session.commit()
         return url_map
 
     def get_short_link(self):

@@ -1,15 +1,14 @@
 from flask import jsonify, request
-from sqlalchemy.exc import IntegrityError
 
-from . import app, db
+from . import app
 from .constants import ERROR_404, STATUS_CREATED
 from .error_handler import InvalidAPIUsageError
 from .models import URLMap
 
 
-@app.route('/api/id/<string:short_id>/', methods=['GET'])
-def get_original_link(short_id):
-    url_map = URLMap.get_url_map_by_short(short=short_id)
+@app.route('/api/id/<string:short>/', methods=['GET'])
+def get_original_link(short):
+    url_map = URLMap.get_by_short(short)
     if not url_map:
         raise InvalidAPIUsageError(
             'Указанный id не найден',
@@ -25,22 +24,13 @@ def create_short_link_api():
         raise InvalidAPIUsageError('Отсутствует тело запроса')
     if 'url' not in data:
         raise InvalidAPIUsageError('"url" является обязательным полем!')
-    if 'custom_id' not in data or data['custom_id'] == '':
-        data['custom_id'] = URLMap.get_unique_short()
     try:
-        short_link = URLMap.create(
-            original=data['url'],
-            short=data['custom_id']
-        ).get_short_link()
-
-        db.session.commit()
-
         return jsonify({
             'url': data['url'],
-            'short_link': short_link
+            'short_link': URLMap.create(
+                original=data['url'],
+                short=data.get('custom_id')
+            ).get_short_link()
         }), STATUS_CREATED
-
-    except IntegrityError as error:
-        raise InvalidAPIUsageError(
-            f'Ошибка при создании в БД: {error}'
-        )
+    except ValueError as error:
+        raise InvalidAPIUsageError(str(error))

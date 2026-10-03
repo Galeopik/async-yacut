@@ -1,8 +1,6 @@
-from aiohttp import ClientError
 from flask import abort, flash, redirect, render_template
-from sqlalchemy.exc import IntegrityError
 
-from . import app, db
+from . import app
 from .constants import ERROR_404, REDIRECT_ENDPOINT
 from .error_handler import InvalidAPIUsageError
 from .forms import FileForm, URLForm
@@ -12,7 +10,7 @@ from .ya_disc import async_upload_files_to_ya_disc
 
 @app.route('/<short>', endpoint=REDIRECT_ENDPOINT)
 def redirect_to_url(short):
-    url_map = URLMap.get_url_map_by_short(short)
+    url_map = URLMap.get_by_short(short)
     if url_map is None:
         abort(ERROR_404)
     return redirect(url_map.original)
@@ -22,7 +20,8 @@ def redirect_to_url(short):
 def index():
     form = URLForm()
     if not form.validate_on_submit():
-        flash('Указано недопустимое имя для короткой ссылки')
+        if form.custom_id.errors:
+            flash(form.custom_id.errors[0])
         return render_template('index.html', form=form)
 
     try:
@@ -32,13 +31,8 @@ def index():
             validate_short=False,
             validate_original=False
         ).get_short_link()
-        db.session.commit()
-    except InvalidAPIUsageError as error:
-        db.session.rollback()
-        flash(error.message)
-        return render_template('index.html', form=form)
-    except IntegrityError as error:
-        flash(f'Предложенный вариант короткой ссылки уже существует {error}')
+    except ValueError as error:
+        flash(str(error))
         return render_template('index.html', form=form)
     return render_template('index.html', form=form, short_link=short_link)
 
@@ -51,22 +45,20 @@ async def files_view():
     files = form.files.data
     try:
         urls = await async_upload_files_to_ya_disc(files)
-    except ClientError as error:
+    except Exception as error:
         flash(f'Не удалось загрузить файлы {error}')
         return render_template('files.html', form=form)
 
     try:
-        files_and_links = [
-            {
-                'filename': file.filename,
-                'short_link': URLMap.create(
-                    original=url,
-                    short=None
-                ).get_short_link()
-            } for file, url in zip(files, urls)]
-        db.session.commit()
-    except IntegrityError as error:
-        flash(f'Не удалось создать короткие ссылки {error}')
-        return render_template('files.html', form=form)
-    return render_template('files.html', form=form,
-                           files_and_links=files_and_links)
+        return render_template(
+            'files.html', form=form,
+            files_and_links=[
+                {
+                    'filename': file.filename,
+                    'short_link': URLMap.create(
+                        original=url,
+                        commit=index == len(urls) - 1
+                    ).get_short_link()
+                } for index, (file, url) in enumerate(zip(files, urls))])
+    except ValueError as error:
+        raise InvalidAPIUsageError(str(error))
