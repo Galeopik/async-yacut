@@ -3,60 +3,70 @@ from random import choices
 
 from flask import url_for
 
-from yacut import db
-
-from .constants import (LIMIT_REPEAT, MAX_LENGTH_ORIGINAL_LINK,
-                        MAX_LENGTH_SHORT_LINK, REDIRECT_ENDPOINT,
-                        RESERVED_NAME, SHORT_CHARS, SHORT_ID_PATTERN,
-                        SHORT_LENGTH)
+from . import db
+from .constants import (LIMIT_REPEAT_CREATE_SHORT, MAX_LENGTH_ORIGINAL_LINK,
+                        MAX_LENGTH_SHORT, REDIRECT_ENDPOINT, RESERVED_NAME,
+                        SHORT_CHARS, SHORT_LENGTH, SHORT_PATTERN)
+from .error_handler import InvalidAPIUsageError
 
 
 class URLMap(db.Model):
     id = db.Column(db.Integer, primary_key=True, comment='Идентификатор')
     original = db.Column(db.String(MAX_LENGTH_ORIGINAL_LINK), nullable=False,
                          comment='Длинная ссылка')
-    short = db.Column(db.String(MAX_LENGTH_SHORT_LINK), nullable=False,
+    short = db.Column(db.String(MAX_LENGTH_SHORT), nullable=False,
                       comment='Короткая ссылка')
     timestamp = db.Column(db.DateTime, index=True, default=datetime.now,
                           comment='Время создания')
 
     @staticmethod
-    def get_unique_short_id():
-        for _ in range(LIMIT_REPEAT):
+    def get_url_map_by_short(short):
+        return URLMap.query.filter_by(short=short).first()
+
+    @staticmethod
+    def get_unique_short():
+        for _ in range(LIMIT_REPEAT_CREATE_SHORT):
             short = ''.join(choices(SHORT_CHARS, k=SHORT_LENGTH))
             if (
-                not URLMap.query.filter_by(short=short).first()
-                and short != RESERVED_NAME
+                short != RESERVED_NAME
+                and not URLMap.get_url_map_by_short(short)
             ):
-                break
-        return short
+                return short
+        raise RuntimeError(
+            'Не удалось сгенерировать уникальный короткий идентификатор'
+        )
 
-    @classmethod
-    def get_url_map_by_short(cls, short):
-        return cls.query.filter_by(short=short).first()
+    @staticmethod
+    def create(original, short, validate_short=True, validate_original=True):
+        if validate_original and len(original) > MAX_LENGTH_ORIGINAL_LINK:
+            raise InvalidAPIUsageError(
+                'Исходная ссылка слишком длинная'
+            )
 
-    @classmethod
-    def create(cls, original, short):
         if not short:
-            short = cls.get_unique_short_id()
+            short = URLMap.get_unique_short()
 
-        if (
-            cls.get_url_map_by_short(short=short)
-            or short in RESERVED_NAME
+        elif validate_short and (
+            not SHORT_PATTERN.fullmatch(short)
+            or len(short) > MAX_LENGTH_SHORT
         ):
-            return None
+            raise InvalidAPIUsageError(
+                'Указано недопустимое имя для короткой ссылки'
+            )
+        if (
+            URLMap.get_url_map_by_short(short=short)
+            or short == RESERVED_NAME
+        ):
+            raise InvalidAPIUsageError(
+                'Предложенный вариант короткой ссылки уже существует.'
+            )
 
-        url_map = cls(
+        url_map = URLMap(
             original=original,
             short=short
         )
         db.session.add(url_map)
-        db.session.commit()
         return url_map
-
-    @staticmethod
-    def is_valid_short(short):
-        return SHORT_ID_PATTERN.fullmatch(short) is not None
 
     def get_short_link(self):
         return url_for(

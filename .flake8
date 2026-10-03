@@ -5,6 +5,7 @@
    ./yacut
  max-complexity = 10
  exclude =
+  .venv
    env
    venv
    tests

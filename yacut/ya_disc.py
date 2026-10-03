@@ -8,8 +8,8 @@ from settings import Config
 AUTH_HEADERS = {
     'Authorization': f'OAuth {Config.DISK_TOKEN}'
 }
-REQUEST_UPLOAD_URL = f'{Config.YANDEX_DISK_API_URL}/disk/resources/upload'
-DOWNLOAD_LINK_URL = f'{Config.YANDEX_DISK_API_URL}/disk/resources/download'
+REQUEST_UPLOAD_URL = f'{Config.DISK_API_URL}/disk/resources/upload'
+DOWNLOAD_LINK_URL = f'{Config.DISK_API_URL}/disk/resources/download'
 
 
 async def async_upload_files_to_ya_disc(files):

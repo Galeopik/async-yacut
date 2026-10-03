@@ -219,7 +219,7 @@ YaCut позволяет загружать файлы через отдельн
 
 ### 1. Клонировать репозиторий
 
-```git clone https://github.com/Galeopik/YaCut.git```
+```git@github.com:Galeopik/async-yacut.git```
 ```cd YaCut```
 
 ### 2. Создать виртуальное окружение
@@ -268,7 +268,7 @@ Linux / macOS:
 
 После запуска приложение будет доступно по адресу:
 
-```http://127.0.0.1:5000/```
+[Ссылка](http://127.0.0.1:5000/)
 
 ## Проверка качества кода
 
@@ -286,6 +286,6 @@ Linux / macOS:
 
 **Глеб Белоусов**
 
-GitHub: https://github.com/Galeopik
+[GitHub](https://github.com/Galeopik)
 
 Проект создан в учебных целях в рамках обучения backend-разработке.
