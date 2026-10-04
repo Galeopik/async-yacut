@@ -214,6 +214,7 @@ YaCut позволяет загружать файлы через отдельн
 ### 1. Клонировать репозиторий
 
 ```git clone git@github.com:Galeopik/async-yacut.git```
+```cd async-yacut```
 
 ### 2. Создать виртуальное окружение
 

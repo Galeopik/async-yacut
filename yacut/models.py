@@ -20,7 +20,7 @@ class URLMap(db.Model):
 
     @staticmethod
     def is_short_reserved(short):
-        return URLMap.get(short=short) or short == RESERVED_SHORT
+        return short == RESERVED_SHORT or URLMap.get(short=short)
 
     @staticmethod
     def get(short):
@@ -33,8 +33,8 @@ class URLMap(db.Model):
             if not URLMap.is_short_reserved(short):
                 return short
         raise RuntimeError(
-            f'Не удалось сгенерировать уникальный короткий идентификатор'
-            f'Потрачено попыток: {LIMIT_REPEAT_CREATE_SHORT}.'
+            f'Не удалось сгенерировать уникальный короткий идентификатор '
+            f'Попыток: {LIMIT_REPEAT_CREATE_SHORT}.'
         )
 
     @staticmethod
@@ -47,7 +47,7 @@ class URLMap(db.Model):
     ):
         if validate_original and len(original) > MAX_LENGTH_ORIGINAL_LINK:
             raise ValueError(
-                f'Исходная ссылка слишком длинная'
+                f'Исходная ссылка слишком длинная. '
                 f'Длина должна быть не более {MAX_LENGTH_ORIGINAL_LINK}'
             )
 

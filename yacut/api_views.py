@@ -32,5 +32,5 @@ def create_short_link_api():
                 short=data.get('custom_id')
             ).get_short_link()
         }), STATUS_CREATED
-    except Exception as error:
+    except (ValueError, RuntimeError) as error:
         raise InvalidAPIUsageError(str(error))

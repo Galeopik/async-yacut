@@ -32,7 +32,7 @@ def index():
                 validate_short=False,
                 validate_original=False
             ).get_short_link())
-    except Exception as error:
+    except (ValueError, RuntimeError) as error:
         flash(str(error))
         return render_template('index.html', form=form)
 
@@ -60,5 +60,5 @@ async def files_view():
                         commit=index == len(urls) - 1
                     ).get_short_link()
                 } for index, (file, url) in enumerate(zip(files, urls))])
-    except Exception as error:
+    except (ValueError, RuntimeError) as error:
         raise InvalidAPIUsageError(str(error))
